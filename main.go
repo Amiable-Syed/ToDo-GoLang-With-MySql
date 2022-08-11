@@ -34,32 +34,38 @@ func dsn(dbName string) string {
 	return fmt.Sprintf("%s:%s@tcp(%s)/%s", username, password, hostname, dbName)
 }
 
+func ErrorCheck(err error) {
+	if err != nil {
+		panic(err.Error())
+	}
+}
+
 func homePage(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Welcome to the Home Page!")
 }
 func returnAllToDos(w http.ResponseWriter, r *http.Request) {
 	var ToDos []ToDo
 	ToDos, err := getAllFields()
-	if err != nil {
-		panic(err.Error())
-	}
+	ErrorCheck(err)
 	fmt.Printf("ToDos 0 index in returnAllToDos :\n %s \t Id:\n %s\n", ToDos[0].Desc, ToDos[0].Id)
 	json.NewEncoder(w).Encode(ToDos)
 }
 
 func returnSingleToDo(w http.ResponseWriter, r *http.Request) {
-	// vars := mux.Vars(r)
-	// key := vars["id"]
+	vars := mux.Vars(r)
+	key := vars["id"]
+	var todo ToDo
+	sqlStatement := `SELECT todo_id,title,todo_desc FROM todo WHERE todo_id=?`
+	row := Connector.QueryRow(sqlStatement, key)
 
-	//Loop on all the ToDos
-	// get the matched Id and return
-	// the object encoded as json
-	// for _, todo := range ToDos {
-	// 	if todo.id == key {
-	// 		json.NewEncoder(w).Encode(todo)
-	// 	}
-	// }
-
+	switch err := row.Scan(&todo.Id, &todo.Desc, &todo.Title); err {
+	case sql.ErrNoRows:
+		fmt.Println("No rows were returned!")
+	case nil:
+		json.NewEncoder(w).Encode(todo)
+	default:
+		panic(err)
+	}
 }
 
 func createNewToDo(w http.ResponseWriter, r *http.Request) {
@@ -84,18 +90,18 @@ func createNewToDo(w http.ResponseWriter, r *http.Request) {
 }
 
 func deleteToDo(w http.ResponseWriter, r *http.Request) {
-	// vars := mux.Vars(r)
-	// key := vars["id"]
-
-	// //Loop on all the ToDos
-	// // get the matched Id and remove
-	// // the object from the global array
-	// for idx, todo := range ToDos {
-	// 	if todo.id == key {
-	// 		ToDos = append(ToDos[:idx], ToDos[idx+1:]...)
-	// 	}
-	// }
-
+	vars := mux.Vars(r)
+	key := vars["id"]
+	fmt.Printf("key in delete%s", key)
+	sqlStatement, err := Connector.Prepare(`DELETE from todo WHERE todo_id=?`)
+	ErrorCheck(err)
+	row, err := sqlStatement.Exec(key)
+	ErrorCheck(err)
+	// affected rows
+	a, e := row.RowsAffected()
+	fmt.Printf("Rows Affected: %v", a)
+	ErrorCheck(e)
+	json.NewEncoder(w).Encode(row)
 }
 
 func handleRequests() {
@@ -104,7 +110,7 @@ func handleRequests() {
 	myRouter := mux.NewRouter().StrictSlash(true)
 	myRouter.HandleFunc("/", homePage)
 	myRouter.HandleFunc("/todos", returnAllToDos)
-	myRouter.HandleFunc("/todo/{id}", returnSingleToDo)
+	myRouter.HandleFunc("/todo/{id}", returnSingleToDo).Methods("GET")
 	myRouter.HandleFunc("/todo/{id}", deleteToDo).Methods("DELETE")
 	myRouter.HandleFunc("/todo", createNewToDo).Methods("POST")
 	log.Fatal(http.ListenAndServe(":1000", myRouter))
