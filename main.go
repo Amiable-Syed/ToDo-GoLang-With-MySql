@@ -258,25 +258,5 @@ func main() {
 		return
 	}
 
-	// todo1 := ToDo{
-	// 	Title: "Task 1",
-	// 	Desc:  "Task 1 to be completed quickly",
-	// }
-	// todo2 := ToDo{
-	// 	Title: "Task 2",
-	// 	Desc:  "Task 2 to be completed quickly",
-	// }
-	// err = insert(todo1)
-	// if err != nil {
-	// 	log.Printf("Insert product failed with error %s", err)
-	// 	return
-	// }
-
-	// err = insert(todo2)
-	// if err != nil {
-	// 	log.Printf("Insert product failed with error %s", err)
-	// 	return
-	// }
-
 	handleRequests()
 }
